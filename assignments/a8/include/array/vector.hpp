@@ -1,105 +1,188 @@
 #pragma once
-#include <algorithm>     // provides max
-#include <stdexcept>     // provides out_of_range exception
+
+#include <algorithm>  //for std::max
+#include <stdexcept>  // for std::out_of_range
 
 namespace dsac::array {
 
-    template <typename T>
+template <typename T>
 class Vector {
-    private:
-        int cap{0};
-        int sz{0};
-        T* data{nullptr};
-    public:
-        Vector();
-        int capacity();
-        int size();
-        bool empty() const;
-        
-        const T& operator[](int i) const;
-        T& operator[](int i);
-        
-        const T& at(int i) const;
-        T& at(int i);
 
-        const T& front() const;
-        T& front();
+private:
+    int cap{0};
+    int sz{0};
+    T* data{nullptr};
 
-        const T& back() const;
-        T& back();
+public:
+    //empty
+    Vector() : cap{0}, sz{0}, data{nullptr} {}
 
-        void push_back(const T& elem);
+    // Destructor
+    ~Vector() {
+        delete[] data;
+    }
 
-        void pop_back();
+    // Copying constructor
+    Vector(const Vector& src) : cap{src.cap}, sz{src.sz}, data{nullptr} {
+        if (cap > 0) {
+            data = new T[cap];
+            for (int idx = 0; idx < sz; ++idx)
+                data[idx] = src.data[idx];
+        }
+    }
 
-        void insert(int i, const T& elem);
-        void erase(int i);
+    // Copying assignment
+    Vector& operator=(const Vector& src) {
+        if (this != &src) {
+            delete[] data;
+            cap  = src.cap;
+            sz   = src.sz;
+            data = nullptr;
+            if (cap > 0) {
+                data = new T[cap];
+                for (int idx = 0; idx < sz; ++idx)
+                    data[idx] = src.data[idx];
+            }
+        }
+        return *this;
+    }
 
-        void reserve(int minimum);
+    //capacity
+    int capacity() const { return cap; }
 
-        Vector(const Vector& other);
+    //elements stored
+    int size() const { return sz; }
 
-        Vector& operator=(const Vector& other);
+    // True is empty
+    bool empty() const { return sz == 0; }
 
-        Vector(Vector&& other);
-        Vector& operator=(Vector&& other);
+    //element at index when vector is const
+    const T& operator[](int i) const { return data[i]; }
 
-        ~Vector() { delete[] data; }
-    
-    private:
-        void clone(const Vector& other);
+    //element at index when vector is non-cons
+    T& operator[](int i) { return data[i]; }
 
-        void transfer(Vector& other);
+    // at function for const
+    const T& at(int i) const {
+        if (i < 0 || i >= sz)
+            throw std::out_of_range("Vector::at — index out of range");
+        return data[i];
+    }
 
-    public:
-        class iterator {
-            friend class Vector;
-            private:
-                Vector* vec;
-                int ind;        // index within the vector
-            
-            public:
-                iterator(Vector* v = nullptr, int i = -1);
-                T& operator*() const;
-                T* operator->() const;
-                iterator& operator++();
-                iterator operator++(int);
-                iterator& operator--();
-                iterator operator--(int);
-                bool operator==(iterator rhs) const;
-                bool operator!=(iterator rhs) const;
-        };
+    // at function for non const
+    T& at(int i) {
+        if (i < 0 || i >= sz)
+            throw std::out_of_range("Vector::at — index out of range");
+        return data[i];
+    }
 
-        class const_iterator {
-            private:
-                const Vector* vec;
-                int ind;                   // index within the vector
-            
-            public:
-                const_iterator(const Vector* v = nullptr, int i = -1);
-                const T& operator*() const;
-                const T* operator->() const;
-                const_iterator& operator++();
-                const_iterator operator++(int);
-                const_iterator& operator--();
-                const_iterator operator--(int);
-                bool operator==(const_iterator rhs) const;
-                bool operator!=(const_iterator rhs) const;
-        };
+    // first element
+    const T& front() const {
+        if (sz == 0)
+            throw std::out_of_range("Vector::front — vector is empty");
+        return data[0];
+    }
 
-        iterator begin();
-        iterator end();
-        const_iterator begin() const;
-        const_iterator end() const;
+    // first element
+    T& front() {
+        if (sz == 0)
+            throw std::out_of_range("Vector::front — vector is empty");
+        return data[0];
+    }
 
-        iterator insert(iterator it, const T& elem);
+    // last element
+    const T& back() const {
+        if (sz == 0)
+            throw std::out_of_range("Vector::back — vector is empty");
+        return data[sz - 1];
+    }
 
-        iterator erase(iterator it);
+    // last element
+    T& back() {
+        if (sz == 0)
+            throw std::out_of_range("Vector::back — vector is empty");
+        return data[sz - 1];
+    }
 
-        void shrink();
-        
-        void shrink_to_fit();
-    
-}; // Vector class
+    // insert at endf
+    void push_back(const T& elem) {
+        if (sz == cap) {
+            reserve(std::max(1, cap * 2));
+        }
+        data[sz++] = elem;
+    }
 
-}  // namespace dsac::array
+    // remove rom end
+    // also call shrink
+    void pop_back() {
+        if (sz == 0)
+            throw std::out_of_range("Vector::pop_back — vector is empty");
+        --sz;
+        shrink();
+    }
+
+    // insert at index
+    void insert(int i, const T& elem) {
+        if (i < 0 || i > sz)
+            throw std::out_of_range("Vector::insert — index out of range");
+        if (sz == cap) {
+            reserve(std::max(1, cap * 2));
+        }
+        for (int cursor = sz; cursor > i; --cursor)
+            data[cursor] = data[cursor - 1];
+        data[i] = elem;
+        ++sz;
+    }
+
+    // removes atindex
+    // also call shrink
+    void erase(int i) {
+        if (i < 0 || i >= sz)
+            throw std::out_of_range("Vector::erase — index out of range");
+        for (int cursor = i; cursor < sz - 1; ++cursor)
+            data[cursor] = data[cursor + 1];
+        --sz;
+        shrink();
+    }
+
+    //capacity >= minimum
+    void reserve(int minimum) {
+        if (minimum <= cap) return;
+
+        int updated_cap  = std::max(minimum, cap * 2);
+        T*  updated_data = new T[updated_cap];
+        for (int idx = 0; idx < sz; ++idx)
+            updated_data[idx] = data[idx];
+        delete[] data;
+        data = updated_data;
+        cap  = updated_cap;
+    }
+
+    // called by other functions to reduce cap by half 
+    // when sz <= cap/4 
+    void shrink() {
+        if (cap > 1 && sz <= cap / 4) {
+            int reduced_cap  = std::max(1, cap / 2);
+            T*  reduced_data = new T[reduced_cap];
+            for (int idx = 0; idx < sz; ++idx)
+                reduced_data[idx] = data[idx];
+            delete[] data;
+            data = reduced_data;
+            cap  = reduced_cap;
+        }
+    }
+
+    // explicitly reduce the cap to sz and eep at least 1 slot
+    void shrink_to_fit() {
+        int fitted_cap  = std::max(1, sz);
+        if (fitted_cap == cap) return;
+        T*  fitted_data = new T[fitted_cap];
+        for (int idx = 0; idx < sz; ++idx)
+            fitted_data[idx] = data[idx];
+        delete[] data;
+        data = fitted_data;
+        cap  = fitted_cap;
+    }
+
+}; //end class Vector
+}//end namespace dsa
